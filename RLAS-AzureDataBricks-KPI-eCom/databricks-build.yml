@@ -1,0 +1,23 @@
+trigger: none
+
+variables:
+  workingDirectory: '$(System.DefaultWorkingDirectory)/<path>'
+
+stages:
+- stage: Build
+  displayName: Build stage
+
+  jobs:
+  - job: Build
+    displayName: Build
+    steps:
+    - task: CopyFiles@2
+      displayName: 'Copy Files to:  $(build.artifactstagingdirectory)'
+      inputs:
+        SourceFolder: '$(workingDirectory)'
+        TargetFolder: ' $(build.artifactstagingdirectory)'
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact: notebooks'
+      inputs:
+        ArtifactName: dev_release

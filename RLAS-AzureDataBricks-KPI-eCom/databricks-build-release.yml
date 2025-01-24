@@ -1,0 +1,60 @@
+trigger:
+- none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+  - stage: artifacts
+    displayName: Prepare Artifacts
+    jobs:
+      - job:
+        steps:
+
+        - task: CopyFiles@2
+          inputs:
+            SourceFolder: '$(Build.SourcesDirectory)'
+            Contents: | # databricks supported extensions: https://docs.databricks.com/notebooks/notebooks-manage.html#notebook-external-formats
+              **/*.py
+              **/*.sql
+              **/*.scala
+              **/*.sc
+              **/*.r
+              **/*.html
+              **/*.ipynb
+              **/*.Rmd
+            TargetFolder: '$(Build.ArtifactsStagingDirectory)/SourceKPI'
+
+        - task: PublishPipelineArtifact@1
+          inputs:
+            targetPath: '$(Build.ArtifactsStagingDirectory)'
+            artifact: 'databricks'
+            publishLocation: 'pipeline'
+
+  - stage: 
+    displayName: Deploy
+    jobs:
+      - deployment:
+        environment: dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+              - task: UsePythonVersion@0
+                displayName: Configuring Python Version
+                inputs:
+                  versionSpec: '3.x'
+                  addToPath: true
+                  architecture: 'x64'
+
+              - powershell: |
+                  Write-Output "[AZDO]" | Out-File ~/.databrickscfg -Encoding ASCII
+                  Write-Output "host = $(databricks.host)" | Out-File ~/.databrickscfg -Encoding ASCII -Append
+                  Write-Output "token = $(databricks.token)" | Out-File ~/.databrickscfg -Encoding ASCII -Append
+
+                  pip3 install --upgrade databricks-cli
+                displayName: configuring databricks
+
+              - powershell: |                  
+                  databricks workspace import_dir -o --profile AZDO $(Pipeline.Workspace)/databricks/SourceKPI/ /SourceKPI
+                displayName: deploying notebooks
