@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 import os
 import pathlib
 import urllib.parse
-
+import re
 from office365.runtime.auth.authentication_context import AuthenticationContext
 from office365.sharepoint.client_context import ClientContext
 
@@ -24,8 +24,6 @@ azure_storage_container_name: str = dbutils.widgets.get("azure_storage_container
 # GET Secrets
 m365_user_name: str = dbutils.secrets.get("storagescope", "sharepoint-rl-username")
 m365_password: str = dbutils.secrets.get("storagescope", "sharepoint-rl-password")
-azure_storage_sas_token: str = dbutils.secrets.get("storagescope", "azure-storage-sastoken")
-spark.conf.set(f"fs.azure.sas.{azure_storage_account_name}.{azure_storage_container_name}.blob.core.windows.net", azure_storage_sas_token)
 
 # Constants
 project_path_prefix: str = "EcomKPI/Demand"
@@ -56,12 +54,12 @@ if len(sharepoint_files) == 0:
 for file in sharepoint_files:
     file_link = file.get_absolute_url().execute_query().value
     file_uri = urllib.parse.urlparse(file_link)
-    file_name: str = os.path.basename(urllib.parse.unquote(file_uri.path))
+    file_name = os.path.basename(urllib.parse.unquote(file_uri.path))
     pattern = r".*\.csv$"
     if not re.match(pattern, file_name):
         continue
 
-    download_path: str = os.path.join(dbfs_temp_folder_path, file_name)
+    download_path = os.path.join(dbfs_temp_folder_path, file_name)
     with open(download_path, "wb") as local_file:
         file.download(local_file).execute_query()
 
